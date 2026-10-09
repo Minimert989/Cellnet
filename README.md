@@ -109,4 +109,13 @@ Rscript benchmarks/run_frontier_scaling.R /tmp/frontier-smoke.csv 100,500 1,4,16
 ```
 
 The default grid includes 1k, 10k, 100k, and 1M total nodes and cone/SCC sizes
-from 1 through 10k; large grids can require substantial time and memory.
+from 1 through 10k. An optional fifth argument sets the size of a disconnected
+background SCC (for example
+`Rscript benchmarks/run_frontier_scaling.R /tmp/out.csv 10000 1,100 30 39,7171`),
+so largest-SCC size can be varied independently of the perturbed SCC/cone. The
+background SCC is not in the perturbation's causal cone. Large grids can
+require substantial time and memory.
+
+A 1k/10k, 30-repetition smoke slice and raw CSV are in
+`FRONTIER_SCALING_RESULTS.md` and `benchmarks/frontier_scaling_1k_10k.csv`;
+they are not substitutes for the documented 100k/1M runs.
