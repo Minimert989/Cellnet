@@ -50,6 +50,10 @@ nodes have been found. This removes the `BFS depth × total edges` wrapper path.
 `perturb()` also no longer checks `target %in% net$nodes` in R on every call.
 R retains scalar/NA validation and string conversion; the native ID map is the
 single authority for whether the target exists.
+An isolated `bench::mark` on a 1M-element character vector measured that
+membership expression at 2.71 ms median, versus 82 ns for the scalar/NA guard
+(100 requested iterations; benchmark timing triggered some garbage collection).
+This isolates the lookup cost; it is not presented as a full-call A/B result.
 
 On the 1M-node network (largest SCC 7,171; perturbed cone 39), a fresh run
 measured 30 batches of 100 frontier calls each. The average end-to-end R wall
