@@ -101,6 +101,7 @@ grid$required_nodes <- ifelse(grid$background_scc_nodes > grid$cone_nodes,
                               grid$cone_nodes + grid$background_scc_nodes,
                               grid$cone_nodes)
 grid <- grid[grid$required_nodes <= grid$total_nodes, , drop = FALSE]
+dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
 rows <- vector("list", nrow(grid))
 for (i in seq_len(nrow(grid))) {
     total <- grid$total_nodes[[i]]
@@ -111,7 +112,9 @@ for (i in seq_len(nrow(grid))) {
     rows[[i]] <- as.data.frame(measure(total, cone, background_scc), check.names = FALSE)
     if (rows[[i]]$maximum_frontier_full_delta_error >= 1e-5)
         stop("frontier/full accuracy threshold exceeded")
+    # Persist each completed scenario so a long 1M-node grid can be stopped
+    # without losing prior measurements.
+    utils::write.csv(do.call(rbind, rows[seq_len(i)]), out_path, row.names = FALSE)
 }
 
-utils::write.csv(do.call(rbind, rows), out_path, row.names = FALSE)
 cat("Wrote", out_path, "\n")

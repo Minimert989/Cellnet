@@ -116,6 +116,7 @@ so largest-SCC size can be varied independently of the perturbed SCC/cone. The
 background SCC is not in the perturbation's causal cone. Large grids can
 require substantial time and memory.
 
-A 1k/10k and selected 100k, 30-repetition results are in
+A 1k/10k, selected 100k, and selected 1M, 30-repetition results are in
 `FRONTIER_SCALING_RESULTS.md` with raw CSVs under `benchmarks/`. The 1M grid
-has not yet been run.
+is partial: a 7,171-node affected SCC did not finish 30 paired full/frontier
+repetitions within 14 minutes and is called out in the report.

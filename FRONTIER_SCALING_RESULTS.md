@@ -21,11 +21,18 @@ SCC in the network. All cases had maximum frontier/full delta error 0.
 | 100,000 | 717 | 1 | 1.230 / 8.788 / 18.917 | 2,103.792 / 2,167.594 / 2,168.834 |
 | 100,000 | 717 | 39 | 24.813 / 30.897 / 35.042 | 45,953.792 / 47,663.386 / 49,737.916 |
 | 100,000 | 717 | 717 | 299.417 / 321.902 / 331.500 | 41,536.625 / 45,088.083 / 45,265.166 |
+| 1,000,000 | 7,171 | 1 | 1.938 / 7.087 / 18.916 | 22,113.771 / 24,641.145 / 31,674.541 |
+| 1,000,000 | 7,171 | 39 | 23.417 / 27.667 / 37.583 | 409,762.750 / 442,951.983 / 459,601.500 |
 
 Raw measurements: [`benchmarks/frontier_scaling_1k_10k.csv`](benchmarks/frontier_scaling_1k_10k.csv)
-and [`benchmarks/frontier_scaling_100k.csv`](benchmarks/frontier_scaling_100k.csv).
-All reported rows had maximum frontier/full delta error 0. The 1M grid has not
-been run yet. Run
+[`benchmarks/frontier_scaling_100k.csv`](benchmarks/frontier_scaling_100k.csv),
+and [`benchmarks/frontier_scaling_1m.csv`](benchmarks/frontier_scaling_1m.csv).
+All reported rows had maximum frontier/full delta error 0. At 1M nodes, the
+7,171-node SCC was also tested as an unaffected background component. Making
+that entire SCC the affected cone did not finish within 14 minutes for 30
+paired full/frontier repetitions; that worst-case row was stopped and remains
+unreported. The benchmark runner now writes each completed scenario
+incrementally. Run
 `benchmarks/run_frontier_scaling.R` with larger total-node and SCC/cone sizes
 before making claims at those scales. Large SCCs that are themselves affected
 remain frontier's worst case, as documented in the README.
