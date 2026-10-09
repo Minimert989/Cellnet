@@ -124,25 +124,47 @@ test_that("frontier and full agree on the reported cyclic multi-input fixture", 
     compiled <- cellnet_compile(network, dt = .05, horizon = 100L)
     frontier <- perturb(compiled, "n2", effect = 1, strategy = "frontier")
     full <- perturb(compiled, "n2", effect = 1, strategy = "full")
-    expect_lt(max(abs(frontier$perturbed - full$perturbed)), 1e-5)
+    frontier_delta <- stats::setNames(frontier$delta, frontier$node)
+    full_delta <- stats::setNames(full$delta, full$node)
+    all_nodes <- union(names(frontier_delta), names(full_delta))
+    frontier_delta <- frontier_delta[all_nodes]
+    full_delta <- full_delta[all_nodes]
+    frontier_delta[is.na(frontier_delta)] <- 0
+    full_delta[is.na(full_delta)] <- 0
+    expect_lt(max(abs(frontier_delta - full_delta)), 1e-5)
     expect_lt(abs(full$perturbed[match("n0", full$node)] - .2), 1e-5)
     expect_lt(abs(full$perturbed[match("n1", full$node)] - .6), 1e-5)
 })
 
-test_that("frontier and full agree across seeded perturbations of a cyclic multi-input SCC", {
+test_that("frontier and full agree across seeded multi-SCC cyclic layouts", {
     set.seed(20261009)
-    edges <- data.frame(
-        source = c("n1", "n0", "n2", "n2"),
-        target = c("n0", "n1", "n1", "n0"),
-        sign = c(-1, 1, 1, -1), weight = 1
-    )
-    network <- set_initial_state(as_cellnet(edges), c(n0 = .25, n1 = .75, n2 = .75))
-    compiled <- cellnet_compile(network, dt = .05, horizon = 100L)
     for (case in seq_len(12L)) {
-        target <- sample(c("n0", "n1", "n2"), 1L)
+        modules <- sample(1:4, 1L)
+        cores <- lapply(seq_len(modules), function(module) {
+            paste0("c", case, "_", module, "_", sample(letters, 3L))
+        })
+        edges <- do.call(rbind, lapply(cores, function(core) data.frame(
+            source = c(core[[2L]], core[[1L]], core[[3L]], core[[3L]]),
+            target = c(core[[1L]], core[[2L]], core[[2L]], core[[1L]]),
+            sign = c(-1, 1, 1, -1), weight = 1
+        )))
+        edges <- edges[sample(seq_len(nrow(edges))), , drop = FALSE]
+        node_names <- unlist(cores, use.names = FALSE)
+        initial <- stats::setNames(rep(c(.25, .75, .75), modules), node_names)
+        compiled <- cellnet_compile(
+            set_initial_state(as_cellnet(edges), initial), dt = .05, horizon = 100L
+        )
+        target <- sample(cores[[sample(seq_len(modules), 1L)]], 1L)
         effect <- runif(1L, .1, 1)
         frontier <- perturb(compiled, target, effect = effect, strategy = "frontier")
         full <- perturb(compiled, target, effect = effect, strategy = "full")
-        expect_lt(max(abs(frontier$perturbed - full$perturbed)), 1e-5)
+        frontier_delta <- stats::setNames(frontier$delta, frontier$node)
+        full_delta <- stats::setNames(full$delta, full$node)
+        all_nodes <- union(names(frontier_delta), names(full_delta))
+        frontier_delta <- frontier_delta[all_nodes]
+        full_delta <- full_delta[all_nodes]
+        frontier_delta[is.na(frontier_delta)] <- 0
+        full_delta[is.na(full_delta)] <- 0
+        expect_lt(max(abs(frontier_delta - full_delta)), 1e-5)
     }
 })

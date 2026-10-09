@@ -78,6 +78,7 @@ Engine::Engine(CompiledNetwork network, SolverConfig config)
     protocol_saved_clamp_active_.resize(network_.nodes.size(), 0U);
     journal_generation_.resize(network_.nodes.size(), 0U);
     queue_generation_.resize(network_.sccs.size(), 0U);
+    scc_fanout_generation_.resize(network_.sccs.size(), 0U);
     dirty_counts_.resize(network_.sccs.size(), 0U);
     dirty_count_generation_.resize(network_.sccs.size(), 0U);
     dirty_reaction_generation_.resize(network_.scc_reactions.size(), 0U);
@@ -166,7 +167,8 @@ EngineMemoryBreakdown Engine::memory_breakdown() const noexcept {
         vector_bytes(reaction_multiplier_) + vector_bytes(context_reaction_multiplier_) +
         vector_bytes(context_node_multiplier_) + vector_bytes(extra_node_decay_) +
         vector_bytes(clamp_value_) + vector_bytes(clamp_active_) + vector_bytes(journal_generation_) +
-        vector_bytes(queue_generation_) + vector_bytes(journal_) + vector_bytes(pending_) +
+        vector_bytes(queue_generation_) + vector_bytes(scc_fanout_generation_) +
+        vector_bytes(journal_) + vector_bytes(pending_) +
         vector_bytes(current_frontier_) + vector_bytes(next_frontier_) + vector_bytes(scratch_values_) +
         vector_bytes(scratch_flags_) + vector_bytes(seed_sccs_) + vector_bytes(active_deltas_) +
         vector_bytes(dirty_counts_) + vector_bytes(dirty_reaction_generation_) +
@@ -2544,6 +2546,10 @@ ExecutionStats Engine::run_frontier(const std::vector<SccId>& seeds, std::uint32
             std::fill(queue_generation_.begin(), queue_generation_.end(), 0U);
             current_queue_generation_ = 1U;
         }
+        if (++current_scc_fanout_generation_ == 0U) {
+            std::fill(scc_fanout_generation_.begin(), scc_fanout_generation_.end(), 0U);
+            current_scc_fanout_generation_ = 1U;
+        }
         for (const auto& pending : pending_) {
             if (pending.delta <= frontier_threshold) {
                 continue;
@@ -2552,10 +2558,10 @@ ExecutionStats Engine::run_frontier(const std::vector<SccId>& seeds, std::uint32
             if (temporal_completed_generation_[changed] != current_temporal_generation_) {
                 enqueue_unique(next_frontier_, changed);
                 mark_node_dependents_dirty(pending.node);
-                if (extra_node_decay_[pending.node] > 0.0F) {
-                    mark_scc_all_dirty(changed);
-                }
             }
+            if (extra_node_decay_[pending.node] > 0.0F) mark_scc_all_dirty(changed);
+            if (scc_fanout_generation_[changed] == current_scc_fanout_generation_) continue;
+            scc_fanout_generation_[changed] = current_scc_fanout_generation_;
             const auto& block = network_.sccs[changed];
             for (std::uint32_t downstream = 0; downstream < block.downstream_count; ++downstream) {
                 const SccId downstream_scc =

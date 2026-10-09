@@ -222,8 +222,10 @@ private:
     std::vector<std::uint8_t> clamp_active_;
     std::vector<std::uint32_t> journal_generation_;
     std::vector<std::uint32_t> queue_generation_;
+    std::vector<std::uint32_t> scc_fanout_generation_;
     std::uint32_t current_journal_generation_{1};
     std::uint32_t current_queue_generation_{1};
+    std::uint32_t current_scc_fanout_generation_{1};
     std::vector<JournalEntry> journal_;
     std::vector<PendingValue> pending_;
     std::vector<SccId> current_frontier_;

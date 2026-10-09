@@ -1,10 +1,8 @@
 # cellnetR
 
-This is a separate R package directory for the CellNet C++ causal execution
-backend. It is intentionally kept under `integrations/cellnetR/`; the C++ core
-and public headers are not modified by this integration. A source snapshot of
-the core is vendored under `src/` and can be refreshed from the monorepo with
-`sh integrations/cellnetR/tools/sync-core.sh` from the repository root.
+`cellnetR` is an R package for signed causal-network perturbation analysis,
+backed by a vendored C++ execution engine. The repository is a standalone R
+package checkout; install it directly from the repository root.
 
 ## Install from this checkout
 
@@ -17,10 +15,9 @@ remotes::install_github("Minimert989/Cellnet")
 
 To install from a local source checkout:
 
-```r
-install.packages("Rcpp")
-Rcpp::compileAttributes("integrations/cellnetR")
-R CMD INSTALL integrations/cellnetR
+```sh
+R -q -e 'install.packages("Rcpp")'
+R CMD INSTALL .
 ```
 
 Optional adapters require their corresponding R/Bioconductor packages. The
@@ -75,10 +72,19 @@ arbitrary numeric kinetic multipliers.
 The first binding lowers signed node-level edges to CellNet relaxation
 reactions. It preserves edge provenance in R but does not yet encode arbitrary
 Boolean AND gates, scheduled reaction-level protocol events, or full omics
-objects inside C++. CellNOptR fitting remains outside CellNet. Solver semantics and reference
-implementation are unchanged. The package includes the vendored snapshot so
-it can build from a source tarball without reaching outside this directory.
-Refresh that snapshot before release and review the copied C++ diff.
+objects inside C++. CellNOptR fitting remains outside CellNet.
+
+The `frontier` strategy schedules work at SCC granularity. It is most useful
+when a perturbation affects a small causal region of the SCC condensation DAG.
+If the affected region is a large strongly connected component (SCC), the
+engine must still evaluate much of that component; frontier may then approach
+or be slower than `full`. This is an expected limitation of SCC-granularity
+locality, not a guarantee of network-size-independent latency. Benchmarks
+should report SCC sizes and affected-cone size alongside timings.
+
+The source snapshot is vendored so the package builds independently. Core
+maintainers should synchronize it from the matching engine source and run the
+package and C++ test suites before publishing a release.
 
 Optional adapters are tested only when their packages are installed. See
 `vignettes/bioconductor-workflows.Rmd` and `tests/testthat/`.
