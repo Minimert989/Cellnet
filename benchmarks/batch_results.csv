@@ -1,0 +1,5 @@
+"api","total_nodes","causal_cone_nodes_per_target","perturbations","elapsed_seconds","microseconds_per_perturbation","changed_result_rows"
+"R_to_native_perturb_batch",100,1,100,0.014,140,100
+"R_to_native_perturb_batch",100,1,1000,0.125,125,1000
+"R_to_native_perturb_batch",100,1,10000,1.413,141.3,10000
+"R_to_native_perturb_batch",100,1,100000,13.573,135.73,100000

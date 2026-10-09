@@ -1,0 +1,57 @@
+---
+title: "CellNet with Bioconductor network and activity objects"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{CellNet with Bioconductor network and activity objects}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## Compile once, perturb many times
+
+```{r, eval=FALSE}
+library(cellnetR)
+network <- cellnet_from_omnipath(OmnipathR::import_all_interactions())
+compiled <- cellnet_compile(network)
+screen <- perturb_batch(compiled, c("BRAF", "MAP2K1", "MAPK1"), effect = -1)
+```
+
+Imported source, reference, mechanism, confidence, and original identifiers are
+retained in the R-side provenance table. Identifier mapping is an explicit
+preprocessing step; CellNet does not silently translate identifiers.
+
+## Inferred networks
+
+```{r, eval=FALSE}
+net <- cellnet_from_carnival(carnival_result)
+drug_screen <- perturb_batch(cellnet_compile(net), drug_targets, effect = -1)
+```
+
+CARNIVAL supplies inferred topology. CellNet executes the supplied signed
+network; it does not repeat network inference or optimize against observations.
+
+## Omics and activity context
+
+```{r, eval=FALSE}
+activity <- decoupleR_result
+compiled <- cellnet_compile(network)
+set_activity_context(compiled, activity, condition = "treated")
+```
+
+Activity inference output is treated as a nonnegative context multiplier, not
+new topology. For `SummarizedExperiment` or `SingleCellExperiment`, select one
+sample/cell with `cellnet_context()` first. Scale interpretation remains the
+caller’s responsibility.
+
+## Pathway cone
+
+```{r, eval=FALSE}
+pathway_net <- cellnet_from_graphite(pathway_edges, sign = 1)
+causal_cone(pathway_net, "EGFR")
+```
+
+Unsigned pathway relations require an explicit sign mapping before execution.
