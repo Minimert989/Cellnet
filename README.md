@@ -116,6 +116,6 @@ so largest-SCC size can be varied independently of the perturbed SCC/cone. The
 background SCC is not in the perturbation's causal cone. Large grids can
 require substantial time and memory.
 
-A 1k/10k, 30-repetition smoke slice and raw CSV are in
-`FRONTIER_SCALING_RESULTS.md` and `benchmarks/frontier_scaling_1k_10k.csv`;
-they are not substitutes for the documented 100k/1M runs.
+A 1k/10k and selected 100k, 30-repetition results are in
+`FRONTIER_SCALING_RESULTS.md` with raw CSVs under `benchmarks/`. The 1M grid
+has not yet been run.

@@ -18,9 +18,14 @@ SCC in the network. All cases had maximum frontier/full delta error 0.
 | 10,000 | 717 | 1 | 0.208 / 1.864 / 2.042 | 205.584 / 213.886 / 217.250 |
 | 1,000 | 717 | 39 | 8.792 / 9.063 / 9.417 | 193.625 / 199.186 / 204.250 |
 | 10,000 | 717 | 39 | 22.688 / 26.475 / 27.041 | 3,902.583 / 3,968.265 / 3,969.292 |
+| 100,000 | 717 | 1 | 1.230 / 8.788 / 18.917 | 2,103.792 / 2,167.594 / 2,168.834 |
+| 100,000 | 717 | 39 | 24.813 / 30.897 / 35.042 | 45,953.792 / 47,663.386 / 49,737.916 |
+| 100,000 | 717 | 717 | 299.417 / 321.902 / 331.500 | 41,536.625 / 45,088.083 / 45,265.166 |
 
-Raw measurements: [`benchmarks/frontier_scaling_1k_10k.csv`](benchmarks/frontier_scaling_1k_10k.csv).
-This is a smoke/scaling slice, not the full 100k/1M grid. Run
+Raw measurements: [`benchmarks/frontier_scaling_1k_10k.csv`](benchmarks/frontier_scaling_1k_10k.csv)
+and [`benchmarks/frontier_scaling_100k.csv`](benchmarks/frontier_scaling_100k.csv).
+All reported rows had maximum frontier/full delta error 0. The 1M grid has not
+been run yet. Run
 `benchmarks/run_frontier_scaling.R` with larger total-node and SCC/cone sizes
 before making claims at those scales. Large SCCs that are themselves affected
 remain frontier's worst case, as documented in the README.
