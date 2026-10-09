@@ -849,12 +849,22 @@ float Engine::evaluate_scc_dirty(SccId scc, ExecutionStats& stats) {
     dirty_counts_[scc] = 0U;
     dirty_count_generation_[scc] = current_dirty_generation_;
 
+    // Dirty scheduling is safe at the output-node level, not the reaction level:
+    // every Modulate term targeting one node contributes to the same derivative
+    // (including its -k*x relaxation term). If any term for a node is dirty, sum
+    // all terms for that output before committing the next state. Rare primitive
+    // mixtures retain the full SCC path until they have equivalent output plans.
+    const bool full_scc_evaluation = config_.mode == SimulationMode::Boolean ||
+        plan.transfer_count != 0U || plan.produce_count != 0U ||
+        plan.destroy_count != 0U || plan.generic_count != 0U;
+
     auto local_index = [this, scc](NodeId node) -> std::optional<std::uint32_t> {
         if (network_.node_to_scc[node] != scc) return std::nullopt;
         return network_.node_position_in_scc[node];
     };
-    auto dirty = [this](std::uint32_t flat_slot) {
-        return dirty_reaction_generation_[flat_slot] == current_dirty_generation_;
+    auto dirty = [this, full_scc_evaluation](std::uint32_t flat_slot) {
+        return full_scc_evaluation ||
+               dirty_reaction_generation_[flat_slot] == current_dirty_generation_;
     };
     auto record_reaction = [this, scc, &stats]() { record_reaction_evaluation(scc, stats); };
 
@@ -887,14 +897,23 @@ float Engine::evaluate_scc_dirty(SccId scc, ExecutionStats& stats) {
             }
         }
     } else {
+        if (!full_scc_evaluation) {
+            for (std::uint32_t index = 0; index < plan.modulate_count; ++index) {
+                const std::uint32_t plan_index = plan.modulate_offset + index;
+                const std::uint32_t flat_slot = network_.plan_modulate_slots[plan_index];
+                if (dirty(flat_slot)) {
+                    scratch_flags_[network_.plan_modulate_output_locals[plan_index]] = 1U;
+                }
+            }
+        }
         for (std::uint32_t index = 0; index < plan.modulate_count; ++index) {
             const std::uint32_t plan_index = plan.modulate_offset + index;
             const std::uint32_t flat_slot = network_.plan_modulate_slots[plan_index];
-            if (!dirty(flat_slot)) continue;
+            const std::uint32_t local = network_.plan_modulate_output_locals[plan_index];
+            if (!dirty(flat_slot) && scratch_flags_[local] == 0U) continue;
             const Reaction& reaction =
                 network_.reactions[network_.plan_modulate_reactions[plan_index]];
             record_reaction();
-            const std::uint32_t local = network_.plan_modulate_output_locals[plan_index];
             const NodeId node = network_.scc_nodes[block.node_offset + local];
             const float target = reaction_signal(reaction);
             scratch_values_[local] += reaction.k *

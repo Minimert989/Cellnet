@@ -113,3 +113,36 @@ test_that("context resets baseline before perturbation and enforces multiplier r
     expect_error(set_context(compiled, c(A = 2)), "within")
     expect_error(cellnet_context(c(A = 2), transform = "positive"), "within")
 })
+
+test_that("frontier and full agree on the reported cyclic multi-input fixture", {
+    edges <- data.frame(
+        source = c("n1", "n0", "n2", "n2"),
+        target = c("n0", "n1", "n1", "n0"),
+        sign = c(-1, 1, 1, -1), weight = 1
+    )
+    network <- set_initial_state(as_cellnet(edges), c(n0 = .25, n1 = .75, n2 = .75))
+    compiled <- cellnet_compile(network, dt = .05, horizon = 100L)
+    frontier <- perturb(compiled, "n2", effect = 1, strategy = "frontier")
+    full <- perturb(compiled, "n2", effect = 1, strategy = "full")
+    expect_lt(max(abs(frontier$perturbed - full$perturbed)), 1e-5)
+    expect_lt(abs(full$perturbed[match("n0", full$node)] - .2), 1e-5)
+    expect_lt(abs(full$perturbed[match("n1", full$node)] - .6), 1e-5)
+})
+
+test_that("frontier and full agree across seeded perturbations of a cyclic multi-input SCC", {
+    set.seed(20261009)
+    edges <- data.frame(
+        source = c("n1", "n0", "n2", "n2"),
+        target = c("n0", "n1", "n1", "n0"),
+        sign = c(-1, 1, 1, -1), weight = 1
+    )
+    network <- set_initial_state(as_cellnet(edges), c(n0 = .25, n1 = .75, n2 = .75))
+    compiled <- cellnet_compile(network, dt = .05, horizon = 100L)
+    for (case in seq_len(12L)) {
+        target <- sample(c("n0", "n1", "n2"), 1L)
+        effect <- runif(1L, .1, 1)
+        frontier <- perturb(compiled, target, effect = effect, strategy = "frontier")
+        full <- perturb(compiled, target, effect = effect, strategy = "full")
+        expect_lt(max(abs(frontier$perturbed - full$perturbed)), 1e-5)
+    }
+})
