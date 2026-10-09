@@ -118,20 +118,33 @@ as.data.frame.CellNetNetwork <- function(x, row.names = NULL, optional = FALSE, 
 #' @param network CellNetNetwork or a supported network object.
 #' @param dt timestep in model time units.
 #' @param horizon number of solver steps per perturbation.
+#' @param epsilon positive convergence tolerance; baseline convergence uses
+#'   epsilon * min(dt, 1) as its maximum per-step state delta.
+#' @param baseline_max_steps maximum full-network steps used to construct the
+#'   baseline equilibrium.
 #' @export
-cellnet_compile <- function(network, dt = 0.05, horizon = 100L) {
+cellnet_compile <- function(network, dt = 0.05, horizon = 100L,
+                            epsilon = 1e-6, baseline_max_steps = 2000L) {
     if (!inherits(network, "CellNetNetwork")) network <- as_cellnet(network)
     if (!is.numeric(dt) || length(dt) != 1 || !is.finite(dt) || dt <= 0) stop("dt must be positive")
     if (length(horizon) != 1 || is.na(horizon) || horizon < 1) stop("horizon must be positive")
+    if (!is.numeric(epsilon) || length(epsilon) != 1 || !is.finite(epsilon) || epsilon <= 0)
+        stop("epsilon must be finite and positive")
+    if (!is.numeric(baseline_max_steps) || length(baseline_max_steps) != 1 ||
+        !is.finite(baseline_max_steps) || baseline_max_steps < 1 ||
+        baseline_max_steps > .Machine$integer.max || baseline_max_steps != floor(baseline_max_steps))
+        stop("baseline_max_steps must be a positive integer no larger than .Machine$integer.max")
     edges <- network$edges
     nodes <- network$nodes
     initial <- unname(network$initial_state[nodes])
-    ptr <- cn_compile(edges, nodes, as.numeric(initial), as.numeric(dt), as.integer(horizon))
+    ptr <- cn_compile(edges, nodes, as.numeric(initial), as.numeric(dt), as.integer(horizon),
+                      as.numeric(epsilon), as.integer(baseline_max_steps))
     structure(list(ptr = ptr, nodes = nodes, edges = edges,
                    provenance = edges[, intersect(c("source", "target", "mechanism", "source_db",
                                                     "references", "confidence", "original_source",
                                                     "original_target"), names(edges)), drop = FALSE],
                    initial_state = network$initial_state, dt = dt, horizon = as.integer(horizon),
+                   epsilon = epsilon, baseline_max_steps = as.integer(baseline_max_steps),
                    metadata = network$metadata), class = "CellNetCompiled")
 }
 

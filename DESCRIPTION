@@ -1,9 +1,9 @@
 Package: cellnetR
 Title: R Interface to the CellNet Causal Execution Engine
 Version: 0.1.0
-Authors@R: person("CellNet", "Developers", role = c("aut", "cre"), email = "cellnet@example.org")
-Author: CellNet Developers [aut, cre]
-Maintainer: CellNet Developers <cellnet@example.org>
+Authors@R: person("Minimert989", role = c("aut", "cre"), email = "179695879+Minimert989@users.noreply.github.com")
+Author: Minimert989 [aut, cre]
+Maintainer: Minimert989 <179695879+Minimert989@users.noreply.github.com>
 Description: Compile signed causal networks in R and execute perturbation and
     batch analyses through the CellNet C++ engine. Optional adapters preserve
     source identifiers and provenance metadata.

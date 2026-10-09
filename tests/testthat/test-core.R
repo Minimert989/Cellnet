@@ -114,6 +114,23 @@ test_that("context resets baseline before perturbation and enforces multiplier r
     expect_error(cellnet_context(c(A = 2), transform = "positive"), "within")
 })
 
+test_that("baseline convergence controls are exposed and failures are diagnostic", {
+    edges <- data.frame(
+        source = c("n0", "n0", "n1"),
+        target = c("n1", "n1", "n0"),
+        sign = 1, weight = c(.5, .5, 1), confidence = c(1, 1, .8)
+    )
+    network <- set_initial_state(as_cellnet(edges), c(n0 = .789, n1 = .065))
+    expect_error(
+        cellnet_compile(network, baseline_max_steps = 1L),
+        "baseline did not converge after 1/1 steps.*last max delta.*required"
+    )
+    compiled <- cellnet_compile(network, baseline_max_steps = 10000L)
+    expect_s3_class(compiled, "CellNetCompiled")
+    expect_error(cellnet_compile(network, epsilon = 0), "epsilon must be finite and positive")
+    expect_error(cellnet_compile(network, baseline_max_steps = 1.5), "positive integer")
+})
+
 test_that("frontier and full agree on the reported cyclic multi-input fixture", {
     edges <- data.frame(
         source = c("n1", "n0", "n2", "n2"),

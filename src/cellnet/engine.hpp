@@ -89,6 +89,7 @@ struct ExecutionStats {
     std::uint64_t propagator_memory_bytes{0}, temporal_plan_memory_bytes{0};
     double trajectory_compression_ratio{1};
     float maximum_step_delta{0.0F};
+    float last_step_delta{0.0F};
     bool converged{false};
     bool numerical_error{false};
 };

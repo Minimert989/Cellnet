@@ -11,8 +11,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // cn_compile
-SEXP cn_compile(Rcpp::DataFrame edges, Rcpp::CharacterVector node_names, Rcpp::NumericVector initial_values, double dt, int horizon);
-RcppExport SEXP _cellnetR_cn_compile(SEXP edgesSEXP, SEXP node_namesSEXP, SEXP initial_valuesSEXP, SEXP dtSEXP, SEXP horizonSEXP) {
+SEXP cn_compile(Rcpp::DataFrame edges, Rcpp::CharacterVector node_names, Rcpp::NumericVector initial_values, double dt, int horizon, double epsilon, int baseline_max_steps);
+RcppExport SEXP _cellnetR_cn_compile(SEXP edgesSEXP, SEXP node_namesSEXP, SEXP initial_valuesSEXP, SEXP dtSEXP, SEXP horizonSEXP, SEXP epsilonSEXP, SEXP baseline_max_stepsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,7 +21,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type initial_values(initial_valuesSEXP);
     Rcpp::traits::input_parameter< double >::type dt(dtSEXP);
     Rcpp::traits::input_parameter< int >::type horizon(horizonSEXP);
-    rcpp_result_gen = Rcpp::wrap(cn_compile(edges, node_names, initial_values, dt, horizon));
+    Rcpp::traits::input_parameter< double >::type epsilon(epsilonSEXP);
+    Rcpp::traits::input_parameter< int >::type baseline_max_steps(baseline_max_stepsSEXP);
+    rcpp_result_gen = Rcpp::wrap(cn_compile(edges, node_names, initial_values, dt, horizon, epsilon, baseline_max_steps));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -96,7 +98,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_cellnetR_cn_compile", (DL_FUNC) &_cellnetR_cn_compile, 5},
+    {"_cellnetR_cn_compile", (DL_FUNC) &_cellnetR_cn_compile, 7},
     {"_cellnetR_cn_perturb", (DL_FUNC) &_cellnetR_cn_perturb, 4},
     {"_cellnetR_cn_perturb_reaction", (DL_FUNC) &_cellnetR_cn_perturb_reaction, 4},
     {"_cellnetR_cn_perturb_batch", (DL_FUNC) &_cellnetR_cn_perturb_batch, 4},

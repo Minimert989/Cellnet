@@ -6,7 +6,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -450,7 +452,13 @@ void Engine::initialize_baseline(const BaselineStepObserver& observer) {
         throw std::runtime_error("baseline construction produced NaN or Inf");
     }
     if (!stats.converged) {
-        throw std::runtime_error("baseline did not converge within the configured step limit");
+        std::ostringstream message;
+        message << "baseline did not converge after " << stats.integration_steps << "/"
+                << config_.baseline_max_steps << " steps (last max delta " << std::scientific
+                << std::setprecision(8) << stats.last_step_delta << "; required <= "
+                << baseline_threshold
+                << "). Increase baseline_max_steps or set a larger epsilon.";
+        throw std::runtime_error(message.str());
     }
     baseline_ = state_;
     linear_region_baseline_stationary_.assign(linear_regions_.size(), 1U);
@@ -2372,6 +2380,7 @@ ExecutionStats Engine::run_full(std::uint32_t max_steps, float convergence_thres
             if (observer) per_scc_delta[scc] = std::max(per_scc_delta[scc], delta);
         }
         const float delta = commit_pending(stats);
+        stats.last_step_delta = delta;
         ++stats.integration_steps;
         if (observer) observer(step, delta, per_scc_delta);
         if (stats.numerical_error) {

@@ -85,8 +85,14 @@ cellnet::Perturbation make_perturbation(CellNetHandle& handle,
 
 // [[Rcpp::export]]
 SEXP cn_compile(Rcpp::DataFrame edges, Rcpp::CharacterVector node_names,
-                Rcpp::NumericVector initial_values, double dt, int horizon) {
-    if (dt <= 0.0 || horizon <= 0) Rcpp::stop("dt and horizon must be positive");
+                Rcpp::NumericVector initial_values, double dt, int horizon,
+                double epsilon, int baseline_max_steps) {
+    if (!R_finite(dt) || dt <= 0.0 || horizon <= 0)
+        Rcpp::stop("dt and horizon must be positive");
+    if (!R_finite(epsilon) || epsilon <= 0.0)
+        Rcpp::stop("epsilon must be finite and positive");
+    if (baseline_max_steps <= 0)
+        Rcpp::stop("baseline_max_steps must be positive");
     const R_xlen_t n_nodes = node_names.size();
     if (initial_values.size() != n_nodes) Rcpp::stop("initial values must match node_names");
     const Rcpp::CharacterVector sources = edges["source"];
@@ -132,6 +138,8 @@ SEXP cn_compile(Rcpp::DataFrame edges, Rcpp::CharacterVector node_names,
     }
     cellnet::SolverConfig config;
     config.dt = static_cast<float>(dt);
+    config.epsilon = static_cast<float>(epsilon);
+    config.baseline_max_steps = static_cast<std::uint32_t>(baseline_max_steps);
     config.perturbation_steps = static_cast<std::uint32_t>(horizon);
     auto compiled = cellnet::Compiler{}.compile(
         spec, 1U, nullptr, cellnet::TemporalCompileConfig{config.dt, config.perturbation_steps});

@@ -52,7 +52,8 @@ README and vignette for integration boundaries.
 }
 \usage{
 as_cellnet(x, ...)
-cellnet_compile(network, dt = 0.05, horizon = 100L)
+cellnet_compile(network, dt = 0.05, horizon = 100L, epsilon = 1e-06,
+  baseline_max_steps = 2000L)
 perturb(net, target, effect = -1, strategy = c("frontier", "full"), context = NULL)
 perturb_reaction(net, reaction_id, effect = -1, strategy = c("frontier", "full"))
 perturb_batch(net, targets, effect = -1, strategy = c("frontier", "full"))
@@ -78,6 +79,10 @@ network/input object or a network returned by \code{as_cellnet()}.}
 \item{...}{Additional format-specific options.}
 \item{dt}{Positive solver step in model time units.}
 \item{horizon}{Positive number of solver steps per perturbation.}
+\item{epsilon}{Positive convergence tolerance. Baseline convergence requires
+the maximum per-step state delta to be at most \code{epsilon * min(dt, 1)}.}
+\item{baseline_max_steps}{Maximum number of full-network integration steps
+allowed for baseline equilibrium construction.}
 \item{target, targets, seeds}{One or more node identifiers.}
 \item{reaction_id}{1-based row index into the compiled edge table.}
 \item{effect}{Nonzero signed perturbation strength in \code{[-1,1]}.}

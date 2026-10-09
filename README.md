@@ -95,4 +95,18 @@ the package copyright metadata.
 
 The native batch scaling harness is `benchmarks/run_batch_benchmark.R`; it
 measures 100, 1k, 10k, and 100k perturbations on a 100-node network with a
-one-node affected cone per target.
+one-node affected cone per target. It is a wrapper/batch benchmark, not a
+locality scaling benchmark.
+
+`benchmarks/run_frontier_scaling.R` compares frontier and full p50/p95/p99
+latency while varying total node count and a directed-ring SCC that is also
+the causal cone. Its output records total nodes, largest SCC, cone size,
+reaction/SCC evaluation counts, and maximum frontier/full delta error. For a
+small smoke run:
+
+```sh
+Rscript benchmarks/run_frontier_scaling.R /tmp/frontier-smoke.csv 100,500 1,4,16 30
+```
+
+The default grid includes 1k, 10k, 100k, and 1M total nodes and cone/SCC sizes
+from 1 through 10k; large grids can require substantial time and memory.
