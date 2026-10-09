@@ -23,6 +23,9 @@ test_that("compiled engine runs perturbations and native batches", {
     batch <- perturb_batch(compiled, c("A", "B"), effect = -1)
     expect_length(batch, 2)
     expect_s3_class(batch[[1]], "CellNetResult")
+    expect_error(perturb(compiled, "missing"), "unknown target node")
+    expect_error(perturb(compiled, c("A", "B")), "target")
+    expect_error(perturb(compiled, NA_character_), "target")
 })
 
 test_that("native causal-distance traversal handles cyclic dependency graphs", {

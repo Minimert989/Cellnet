@@ -17,6 +17,8 @@ cone_sizes <- parse_csv_ints(if (length(args) >= 3L) args[[3L]] else NULL,
 repetitions <- parse_csv_ints(if (length(args) >= 4L) args[[4L]] else NULL, 30L)[[1L]]
 background_scc_sizes <- parse_csv_ints(if (length(args) >= 5L) args[[5L]] else NULL,
                                        cone_sizes)
+wall_batch_size <- parse_csv_ints(if (length(args) >= 6L) args[[6L]] else NULL,
+                                  100L)[[1L]]
 if (repetitions < 30L)
     warning("fewer than 30 repetitions requested; tail quantiles will be noisy")
 
@@ -54,6 +56,7 @@ measure <- function(total_nodes, cone_nodes, background_scc_nodes) {
 
     frontier_us <- full_us <- numeric(repetitions)
     frontier_wall_us <- full_wall_us <- numeric(repetitions)
+    frontier_wall_batch_us <- numeric(repetitions)
     frontier_reactions <- full_reactions <- numeric(repetitions)
     frontier_sccs <- full_sccs <- numeric(repetitions)
     maximum_error <- 0
@@ -81,6 +84,19 @@ measure <- function(total_nodes, cone_nodes, background_scc_nodes) {
         rv[is.na(rv)] <- 0
         maximum_error <- max(maximum_error, max(abs(fv - rv)))
     }
+    # system.time has millisecond-scale granularity on this platform. Time a
+    # group of frontier calls and divide by its size to estimate per-call wall
+    # latency at sub-millisecond resolution. Effects vary to avoid cache hits.
+    for (i in seq_len(repetitions)) {
+        batch_targets <- cone[((seq_len(wall_batch_size) - 1L) %% cone_nodes) + 1L]
+        batch_effects <- runif(wall_batch_size, .2, 1)
+        elapsed <- system.time({
+            for (j in seq_len(wall_batch_size))
+                perturb(compiled, batch_targets[[j]], effect = batch_effects[[j]],
+                        strategy = "frontier")
+        })[["elapsed"]]
+        frontier_wall_batch_us[[i]] <- unname(elapsed) * 1e6 / wall_batch_size
+    }
     quantile_row <- function(x, prefix) {
         q <- stats::quantile(x, c(.5, .95, .99), names = FALSE, type = 8)
         stats::setNames(as.list(q), paste0(prefix, c("_p50_us", "_p95_us", "_p99_us")))
@@ -89,11 +105,13 @@ measure <- function(total_nodes, cone_nodes, background_scc_nodes) {
            largest_scc_nodes = max(cone_nodes, background_scc_nodes),
            affected_scc_nodes = cone_nodes,
            causal_cone_nodes = cone_nodes,
-           repetitions = repetitions),
+           repetitions = repetitions,
+           wall_batch_size = wall_batch_size),
       quantile_row(frontier_us, "frontier"),
       quantile_row(full_us, "full"),
       quantile_row(frontier_wall_us, "frontier_R_wall"),
       quantile_row(full_wall_us, "full_R_wall"),
+      quantile_row(frontier_wall_batch_us, "frontier_R_wall_batch_mean"),
       list(frontier_reaction_evaluations_p50 = stats::median(frontier_reactions),
            full_reaction_evaluations_p50 = stats::median(full_reactions),
            frontier_scc_evaluations_p50 = stats::median(frontier_sccs),

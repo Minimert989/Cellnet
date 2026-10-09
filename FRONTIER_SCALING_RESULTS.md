@@ -47,15 +47,18 @@ computed in C++ from the compiled dependency CSR. The C++ handle reuses its
 visited-generation arrays and BFS queue, and stops once all returned changed
 nodes have been found. This removes the `BFS depth × total edges` wrapper path.
 
-On the 1M-node network (largest SCC 7,171; perturbed cone 39), 30 paired calls
-reported frontier native-engine p50/p95/p99 of 25.3/33.0/40.1 µs, while the
-measured end-to-end R `perturb()` wall time was 1,000/1,150/2,000 µs. Full
-strategy measured 415,876/818,879/862,241 µs natively and
-416,500/819,650/863,000 µs end-to-end. The R wall clock has millisecond-scale
-quantization at this duration, and includes data-frame creation and attribute
-handling. Frontier/full maximum delta error was zero. Thus native compute is
-not the entire R call cost, but the wrapper no longer repeatedly scans one
-million edges per BFS level.
+`perturb()` also no longer checks `target %in% net$nodes` in R on every call.
+R retains scalar/NA validation and string conversion; the native ID map is the
+single authority for whether the target exists.
+
+On the 1M-node network (largest SCC 7,171; perturbed cone 39), a fresh run
+measured 30 batches of 100 frontier calls each. The average end-to-end R wall
+time per call had batch-mean p50/p95/p99 of **150/227.5/440 µs**; native-engine
+latency was 22.9/32.2/41.8 µs. The prior single-call `system.time()` columns
+quantized to 0–1,000 µs and are not useful at this latency. Full strategy
+measured 409,610/439,721/467,321 µs natively; its one-call R wall measurements
+remain millisecond-quantized. Frontier/full maximum delta error was zero. The
+R wall measurements include DataFrame creation and attribute handling.
 
 The 1-node cone rows are self-loop/timer-floor controls, not representative
 frontier performance claims; use cone sizes 39 and above to assess useful
@@ -66,3 +69,6 @@ measurement remains outstanding.
 
 Raw end-to-end measurements:
 [`benchmarks/frontier_scaling_1m_walltime.csv`](benchmarks/frontier_scaling_1m_walltime.csv).
+Reproduce this case with
+`Rscript benchmarks/run_frontier_scaling.R output.csv 1000000 39 30 7171 100`;
+the final argument sets calls per timed batch.
