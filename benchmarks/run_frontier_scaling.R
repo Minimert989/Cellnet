@@ -53,14 +53,19 @@ measure <- function(total_nodes, cone_nodes, background_scc_nodes) {
                                 baseline_max_steps = 100L)
 
     frontier_us <- full_us <- numeric(repetitions)
+    frontier_wall_us <- full_wall_us <- numeric(repetitions)
     frontier_reactions <- full_reactions <- numeric(repetitions)
     frontier_sccs <- full_sccs <- numeric(repetitions)
     maximum_error <- 0
     for (i in seq_len(repetitions)) {
         target <- cone[[(i - 1L) %% cone_nodes + 1L]]
         effect <- runif(1L, .2, 1)
-        frontier <- perturb(compiled, target, effect = effect, strategy = "frontier")
-        full <- perturb(compiled, target, effect = effect, strategy = "full")
+        frontier_wall_us[[i]] <- unname(system.time(
+            frontier <- perturb(compiled, target, effect = effect, strategy = "frontier")
+        )[["elapsed"]]) * 1e6
+        full_wall_us[[i]] <- unname(system.time(
+            full <- perturb(compiled, target, effect = effect, strategy = "full")
+        )[["elapsed"]]) * 1e6
         frontier_us[[i]] <- attr(frontier, "execution_time_us")
         full_us[[i]] <- attr(full, "execution_time_us")
         frontier_reactions[[i]] <- attr(frontier, "reaction_evaluations")
@@ -87,6 +92,8 @@ measure <- function(total_nodes, cone_nodes, background_scc_nodes) {
            repetitions = repetitions),
       quantile_row(frontier_us, "frontier"),
       quantile_row(full_us, "full"),
+      quantile_row(frontier_wall_us, "frontier_R_wall"),
+      quantile_row(full_wall_us, "full_R_wall"),
       list(frontier_reaction_evaluations_p50 = stats::median(frontier_reactions),
            full_reaction_evaluations_p50 = stats::median(full_reactions),
            frontier_scc_evaluations_p50 = stats::median(frontier_sccs),

@@ -25,6 +25,16 @@ test_that("compiled engine runs perturbations and native batches", {
     expect_s3_class(batch[[1]], "CellNetResult")
 })
 
+test_that("native causal-distance traversal handles cyclic dependency graphs", {
+    edges <- data.frame(source = c("A", "B", "C"),
+                        target = c("B", "C", "A"), sign = 1)
+    compiled <- cellnet_compile(set_initial_state(as_cellnet(edges),
+                                                  c(A = 0, B = 0, C = 0)))
+    result <- perturb(compiled, "A", effect = 1)
+    expect_equal(result$causal_distance[match(c("A", "B", "C"), result$node)],
+                 c(0L, 1L, 2L))
+})
+
 test_that("reaction inhibition is not a node clamp", {
     edges <- data.frame(source = "A", target = "B", sign = 1)
     compiled <- cellnet_compile(set_initial_state(as_cellnet(edges), c(A = 1, B = 1)))

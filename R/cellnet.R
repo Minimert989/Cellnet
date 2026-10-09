@@ -161,7 +161,7 @@ perturb <- function(net, target, effect = -1, strategy = c("frontier", "full"), 
     if (length(target) != 1 || !target %in% net$nodes) stop("target must be one known node")
     if (length(effect) != 1 || !is.finite(effect) || effect == 0 || abs(effect) > 1)
         stop("effect must be nonzero and within [-1,1]")
-    .new_result(cn_perturb(net$ptr, target, effect, strategy), net, target)
+    .new_result(cn_perturb(net$ptr, target, effect, strategy), net)
 }
 
 #' Inhibit or activate one specific edge reaction
@@ -175,8 +175,7 @@ perturb_reaction <- function(net, reaction_id, effect = -1,
         reaction_id > nrow(net$edges)) stop("reaction_id must index a compiled edge")
     if (length(effect) != 1 || !is.finite(effect) || effect == 0 || abs(effect) > 1)
         stop("effect must be nonzero and within [-1,1]")
-    target <- net$edges$target[[reaction_id]]
-    .new_result(cn_perturb_reaction(net$ptr, as.integer(reaction_id), effect, strategy), net, target)
+    .new_result(cn_perturb_reaction(net$ptr, as.integer(reaction_id), effect, strategy), net)
 }
 
 #' Execute many perturbations through one R-to-native batch call
@@ -187,20 +186,12 @@ perturb_batch <- function(net, targets, effect = -1, strategy = c("frontier", "f
     targets <- as.character(targets)
     if (any(!targets %in% net$nodes)) stop("all targets must be known nodes")
     raw <- cn_perturb_batch(net$ptr, targets, effect, strategy)
-    Map(function(data, target) .new_result(data, net, target), raw, targets)
+    Map(function(data) .new_result(data, net), raw)
 }
 
-.new_result <- function(data, net, seed) {
-    distances <- stats::setNames(0L, seed)
-    frontier <- seed
-    while (length(frontier)) {
-        next_nodes <- unique(net$edges$target[net$edges$source %in% frontier])
-        next_nodes <- setdiff(next_nodes, names(distances))
-        if (!length(next_nodes)) break
-        distances[next_nodes] <- max(distances[frontier]) + 1L
-        frontier <- next_nodes
-    }
-    data$causal_distance <- unname(distances[data$node])
+.new_result <- function(data, net) {
+    # Native materialization computes distances with the compiled dependency CSR.
+    # Keep the R wrapper O(number of returned changes), not O(depth * all edges).
     data$affected <- !is.na(data$causal_distance)
     class(data) <- c("CellNetResult", class(data))
     attr(data, "network") <- net

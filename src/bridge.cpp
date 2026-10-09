@@ -16,6 +16,11 @@ struct CellNetHandle {
     cellnet::Engine engine;
     std::vector<std::string> names;
     std::unordered_map<std::string, cellnet::NodeId> ids;
+    std::vector<std::uint32_t> causal_seen;
+    std::vector<std::uint32_t> causal_targets;
+    std::vector<std::int32_t> causal_distances;
+    std::vector<cellnet::NodeId> causal_queue;
+    std::uint32_t causal_generation{0};
 
     CellNetHandle(cellnet::CompiledNetwork network, cellnet::SolverConfig config,
                   std::vector<std::string> node_names)
@@ -23,6 +28,11 @@ struct CellNetHandle {
         for (std::size_t i = 0; i < names.size(); ++i) {
             ids.emplace(names[i], static_cast<cellnet::NodeId>(i));
         }
+        const auto node_count = engine.network().nodes.size();
+        causal_seen.resize(node_count, 0U);
+        causal_targets.resize(node_count, 0U);
+        causal_distances.resize(node_count, -1);
+        causal_queue.reserve(node_count);
         engine.initialize_baseline();
     }
 };
@@ -33,19 +43,72 @@ CellNetHandle& checked_handle(SEXP pointer) {
     return *handle;
 }
 
-Rcpp::DataFrame materialize(const CellNetHandle& handle,
-                            const cellnet::SimulationResult& result) {
+std::uint32_t next_causal_generation(CellNetHandle& handle) {
+    ++handle.causal_generation;
+    if (handle.causal_generation == 0U) {
+        std::fill(handle.causal_seen.begin(), handle.causal_seen.end(), 0U);
+        std::fill(handle.causal_targets.begin(), handle.causal_targets.end(), 0U);
+        handle.causal_generation = 1U;
+    }
+    return handle.causal_generation;
+}
+
+Rcpp::DataFrame materialize(CellNetHandle& handle,
+                            const cellnet::SimulationResult& result,
+                            cellnet::NodeId seed = cellnet::kInvalidNode) {
     const R_xlen_t n = static_cast<R_xlen_t>(result.molecular_changes.size());
     Rcpp::CharacterVector node(n);
     Rcpp::NumericVector baseline(n), perturbed(n), delta(n);
-    Rcpp::LogicalVector affected(n, true);
+    Rcpp::LogicalVector affected(n, false);
     Rcpp::IntegerVector distance(n, NA_INTEGER);
+    std::uint32_t distance_generation = 0U;
+
+    if (seed != cellnet::kInvalidNode && n > 0) {
+        const auto& network = handle.engine.network();
+        distance_generation = next_causal_generation(handle);
+        std::size_t remaining = 0;
+        for (const auto& change : result.molecular_changes) {
+            if (change.id < handle.causal_targets.size() &&
+                handle.causal_targets[change.id] != distance_generation) {
+                handle.causal_targets[change.id] = distance_generation;
+                ++remaining;
+            }
+        }
+        handle.causal_queue.clear();
+        if (seed < handle.causal_seen.size()) {
+            handle.causal_seen[seed] = distance_generation;
+            handle.causal_distances[seed] = 0;
+            handle.causal_queue.push_back(seed);
+            if (handle.causal_targets[seed] == distance_generation) --remaining;
+        }
+        std::size_t head = 0;
+        while (head < handle.causal_queue.size() && remaining > 0) {
+            const auto source = handle.causal_queue[head++];
+            const auto begin = network.dependency_offsets[source];
+            const auto end = network.dependency_offsets[source + 1U];
+            for (auto edge = begin; edge < end; ++edge) {
+                const auto target = network.dependency_targets[static_cast<std::size_t>(edge)];
+                if (handle.causal_seen[target] == distance_generation) continue;
+                handle.causal_seen[target] = distance_generation;
+                handle.causal_distances[target] = handle.causal_distances[source] + 1;
+                handle.causal_queue.push_back(target);
+                if (handle.causal_targets[target] == distance_generation) --remaining;
+            }
+        }
+    }
+
     for (R_xlen_t i = 0; i < n; ++i) {
         const auto& change = result.molecular_changes[static_cast<std::size_t>(i)];
         node[i] = handle.names.at(change.id);
         baseline[i] = change.baseline;
         perturbed[i] = change.value;
         delta[i] = change.delta;
+        if (distance_generation != 0U &&
+            change.id < handle.causal_seen.size() &&
+            handle.causal_seen[change.id] == distance_generation) {
+            distance[i] = handle.causal_distances[change.id];
+            affected[i] = true;
+        }
     }
     Rcpp::DataFrame output = Rcpp::DataFrame::create(
         Rcpp::_["node"] = node,
@@ -156,7 +219,7 @@ Rcpp::DataFrame cn_perturb(SEXP pointer, std::string target, double effect,
                            std::string strategy) {
     auto& handle = checked_handle(pointer);
     const auto p = make_perturbation(handle, target, effect);
-    return materialize(handle, handle.engine.run(p, strategy_from_string(strategy)));
+    return materialize(handle, handle.engine.run(p, strategy_from_string(strategy)), p.node);
 }
 
 // [[Rcpp::export]]
@@ -172,7 +235,9 @@ Rcpp::DataFrame cn_perturb_reaction(SEXP pointer, int reaction_id, double effect
     p.strength = static_cast<float>(std::abs(effect));
     p.type = effect < 0.0 ? cellnet::PerturbationType::ReactionInhibition
                           : cellnet::PerturbationType::ReactionActivation;
-    return materialize(handle, handle.engine.run(p, strategy_from_string(strategy)));
+    const auto& reaction = handle.engine.network().reactions[static_cast<std::size_t>(reaction_id - 1)];
+    const auto seed = handle.engine.network().reaction_outputs[reaction.output_offset];
+    return materialize(handle, handle.engine.run(p, strategy_from_string(strategy)), seed);
 }
 
 // [[Rcpp::export]]
@@ -185,7 +250,8 @@ Rcpp::List cn_perturb_batch(SEXP pointer, Rcpp::CharacterVector targets,
         perturbations.push_back(make_perturbation(handle, Rcpp::as<std::string>(target), effect));
     const auto results = handle.engine.run_batch(perturbations, strategy_from_string(strategy));
     Rcpp::List output(results.size());
-    for (std::size_t i = 0; i < results.size(); ++i) output[i] = materialize(handle, results[i]);
+    for (std::size_t i = 0; i < results.size(); ++i)
+        output[i] = materialize(handle, results[i], perturbations[i].node);
     output.attr("names") = targets;
     return output;
 }

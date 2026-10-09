@@ -1,7 +1,7 @@
 # Frontier locality scaling benchmark
 
-Measured with R 4.5.1 on Apple Silicon. These are native-engine-reported
-latencies (`execution_time_us`), not R wrapper wall times. Each cell is the
+Measured with R 4.5.1 on Apple Silicon. The main table reports native-engine
+latencies (`execution_time_us`). Each cell is the
 distribution over 30 paired frontier/full perturbations at `dt = 0.05` and
 horizon 20. Random effect strengths prevent repeated identical requests from
 reusing the result cache. The directed active ring is the perturbed SCC and
@@ -38,3 +38,31 @@ The benchmark runner writes each completed scenario incrementally. Run
 `benchmarks/run_frontier_scaling.R` with larger total-node and SCC/cone sizes
 before making claims at those scales. Large SCCs that are themselves affected
 remain frontier's worst case, as documented in the README.
+
+## R wrapper wall time after native causal-distance traversal
+
+The previous `.new_result()` calculated causal distances in R by repeatedly
+scanning the complete edge table once per BFS depth. It now consumes distances
+computed in C++ from the compiled dependency CSR. The C++ handle reuses its
+visited-generation arrays and BFS queue, and stops once all returned changed
+nodes have been found. This removes the `BFS depth × total edges` wrapper path.
+
+On the 1M-node network (largest SCC 7,171; perturbed cone 39), 30 paired calls
+reported frontier native-engine p50/p95/p99 of 25.3/33.0/40.1 µs, while the
+measured end-to-end R `perturb()` wall time was 1,000/1,150/2,000 µs. Full
+strategy measured 415,876/818,879/862,241 µs natively and
+416,500/819,650/863,000 µs end-to-end. The R wall clock has millisecond-scale
+quantization at this duration, and includes data-frame creation and attribute
+handling. Frontier/full maximum delta error was zero. Thus native compute is
+not the entire R call cost, but the wrapper no longer repeatedly scans one
+million edges per BFS level.
+
+The 1-node cone rows are self-loop/timer-floor controls, not representative
+frontier performance claims; use cone sizes 39 and above to assess useful
+workloads. The benchmark currently uses synthetic rings. The repository has
+the small A375 model but no large curated signaling-network topology suitable
+for a representative cone-distribution benchmark, so that biological-topology
+measurement remains outstanding.
+
+Raw end-to-end measurements:
+[`benchmarks/frontier_scaling_1m_walltime.csv`](benchmarks/frontier_scaling_1m_walltime.csv).
