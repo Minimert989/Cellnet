@@ -1,4 +1,4 @@
-# Frontier locality smoke benchmark
+# Frontier locality scaling benchmark
 
 Measured with R 4.5.1 on Apple Silicon. These are native-engine-reported
 latencies (`execution_time_us`), not R wrapper wall times. Each cell is the
@@ -27,12 +27,14 @@ SCC in the network. All cases had maximum frontier/full delta error 0.
 Raw measurements: [`benchmarks/frontier_scaling_1k_10k.csv`](benchmarks/frontier_scaling_1k_10k.csv)
 [`benchmarks/frontier_scaling_100k.csv`](benchmarks/frontier_scaling_100k.csv),
 and [`benchmarks/frontier_scaling_1m.csv`](benchmarks/frontier_scaling_1m.csv).
-All reported rows had maximum frontier/full delta error 0. At 1M nodes, the
-7,171-node SCC was also tested as an unaffected background component. Making
-that entire SCC the affected cone did not finish within 14 minutes for 30
-paired full/frontier repetitions; that worst-case row was stopped and remains
-unreported. The benchmark runner now writes each completed scenario
-incrementally. Run
+All 30-repetition rows had maximum frontier/full delta error 0. At 1M nodes,
+the 7,171-node SCC was also tested as an unaffected background component.
+Making it the affected cone completed once with 3,774 µs frontier, 434,616 µs
+full, and zero delta error; that single run is not a percentile estimate. The
+30-repetition version of this largest-cone case was stopped after 14 minutes.
+Its one-run result is preserved separately at
+[`benchmarks/frontier_scaling_1m_worstcase_single.csv`](benchmarks/frontier_scaling_1m_worstcase_single.csv).
+The benchmark runner writes each completed scenario incrementally. Run
 `benchmarks/run_frontier_scaling.R` with larger total-node and SCC/cone sizes
 before making claims at those scales. Large SCCs that are themselves affected
 remain frontier's worst case, as documented in the README.

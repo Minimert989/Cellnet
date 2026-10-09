@@ -1,0 +1,2 @@
+"total_nodes","largest_scc_nodes","affected_scc_nodes","causal_cone_nodes","repetitions","frontier_p50_us","frontier_p95_us","frontier_p99_us","full_p50_us","full_p95_us","full_p99_us","frontier_reaction_evaluations_p50","full_reaction_evaluations_p50","frontier_scc_evaluations_p50","full_scc_evaluations_p50","maximum_frontier_full_delta_error"
+1000000,7171,7171,7171,1,3774.042,3774.042,3774.042,434616.333,434616.333,434616.333,143420,2e+07,20,19856600,0
