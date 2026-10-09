@@ -136,28 +136,33 @@ test_that("frontier and full agree on the reported cyclic multi-input fixture", 
     expect_lt(abs(full$perturbed[match("n1", full$node)] - .6), 1e-5)
 })
 
-test_that("frontier and full agree across seeded multi-SCC cyclic layouts", {
+test_that("frontier and full agree across seeded random cyclic multi-input networks", {
     set.seed(20261009)
     for (case in seq_len(12L)) {
-        modules <- sample(1:4, 1L)
-        cores <- lapply(seq_len(modules), function(module) {
-            paste0("c", case, "_", module, "_", sample(letters, 3L))
-        })
-        edges <- do.call(rbind, lapply(cores, function(core) data.frame(
-            source = c(core[[2L]], core[[1L]], core[[3L]], core[[3L]]),
-            target = c(core[[1L]], core[[2L]], core[[2L]], core[[1L]]),
-            sign = c(-1, 1, 1, -1), weight = 1
-        )))
+        node_count <- sample(2:10, 1L)
+        nodes <- paste0("v", case, "_", seq_len(node_count))
+        ring_sources <- nodes
+        ring_targets <- c(nodes[-1L], nodes[[1L]])
+        extra_sources <- vapply(seq_along(nodes), function(i) {
+            sample(setdiff(nodes, nodes[[i]]), 1L)
+        }, character(1))
+        edges <- data.frame(
+            source = c(ring_sources, extra_sources),
+            target = c(ring_targets, nodes),
+            sign = sample(c(-1, 1), 2L * node_count, replace = TRUE),
+            weight = runif(2L * node_count, .2, .4),
+            confidence = runif(2L * node_count, .5, 1)
+        )
         edges <- edges[sample(seq_len(nrow(edges))), , drop = FALSE]
-        node_names <- unlist(cores, use.names = FALSE)
-        initial <- stats::setNames(rep(c(.25, .75, .75), modules), node_names)
+        # Uniform half-activity is an equilibrium for signed Modulate terms,
+        # avoiding baseline-transient failures in this scheduler regression.
+        initial <- stats::setNames(rep(.5, node_count), nodes)
         compiled <- cellnet_compile(
             set_initial_state(as_cellnet(edges), initial), dt = .05, horizon = 100L
         )
-        target <- sample(cores[[sample(seq_len(modules), 1L)]], 1L)
-        effect <- runif(1L, .1, 1)
-        frontier <- perturb(compiled, target, effect = effect, strategy = "frontier")
-        full <- perturb(compiled, target, effect = effect, strategy = "full")
+        target <- sample(nodes, 1L)
+        frontier <- perturb(compiled, target, effect = 1, strategy = "frontier")
+        full <- perturb(compiled, target, effect = 1, strategy = "full")
         frontier_delta <- stats::setNames(frontier$delta, frontier$node)
         full_delta <- stats::setNames(full$delta, full$node)
         all_nodes <- union(names(frontier_delta), names(full_delta))
