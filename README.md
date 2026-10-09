@@ -84,8 +84,8 @@ Optional adapters are tested only when their packages are installed. See
 `vignettes/bioconductor-workflows.Rmd` and `tests/testthat/`.
 
 The CellNet R package and its vendored CellNet core snapshot are distributed
-under the MIT License; see `COPYING` for the full terms and `LICENSE` for the
-package copyright metadata.
+under the MIT License. The full terms are in `COPYING`; `LICENSE` also carries
+the package copyright metadata.
 
 The native batch scaling harness is `benchmarks/run_batch_benchmark.R`; it
 measures 100, 1k, 10k, and 100k perturbations on a 100-node network with a
